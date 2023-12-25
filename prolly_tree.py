@@ -67,6 +67,7 @@ class Node:
             if node.merkel_hash is None:
                 node.fill_merkel_hash()
 
+        bucket_nodes.reverse()
         self.merkel_hash = bucket_hash(bucket_nodes)
         return self
 
@@ -300,7 +301,7 @@ class Message:
     def __repr__(self):
         return f"Message({self.data}, {self.timestamp})"
 
-# to Test the prolly tree
+# # to Test the prolly tree
 # messages = [Message(i, i) for i in range(0, 10)]
 # tree = ProllyTree(messages)
 # print(tree)
