@@ -129,7 +129,7 @@ class Level:
     def BaseLevel(messages):
         level = Level(0)
         nodes = [Node(m.data, m.timestamp) for m in messages]
-        fake_tail = Node("fake", None, is_tail=True)
+        fake_tail = Node("Tail", "Tail", is_tail=True)
         nodes.append(fake_tail)
         linked_nodes = Level.link_nodes(nodes)
         level.tail = linked_nodes[-1]
@@ -301,7 +301,22 @@ class Message:
     def __repr__(self):
         return f"Message({self.data}, {self.timestamp})"
 
-# # to Test the prolly tree
-# messages = [Message(i, i) for i in range(0, 10)]
-# tree = ProllyTree(messages)
-# print(tree)
+# to Test the prolly tree
+print("Creating 9 messages: ")
+messages = [Message(i, i) for i in range(0, 10)]
+print("Creating a prolly tree with the messages")
+tree = ProllyTree(messages)
+print("Printing the tree")
+print(tree)
+print("#############################################")
+print("Searching a node with timestamp 5")
+print("Key Found inside the tree " + str(tree.search(5)))
+print("#############################################")
+print("Deleting a node with timestamp 6")
+tree.delete(6)
+print("Printing the tree")
+print("#############################################")
+print("inserting a node with timestamp 12")
+tree.insert(Message(12, 12))
+print("Printing the tree")
+print(tree)

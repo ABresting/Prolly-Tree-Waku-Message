@@ -68,3 +68,51 @@ Each node in the tree individually can be upgraded to the next level. This is do
 
 - Whenever a node is inserted or deleted, the Merkel hashes for the affected nodes and their ancestors are updated to maintain data integrity.
 - The Merkel hash for a node is calculated by rolling the hashes of all the nodes to the down left of the node until previous boundary node (chunk before) is reached.
+
+### How to run/test
+
+To test the code, the prolly_tree.py file can be run directly. It will create 10 messages from 0 to 9 as the key. The value is the same as the key for convenience.
+
+- 0-9 messages are created.
+- A Prolly tree is created with the messages.
+- The tree is then searched for a node with timestamp 5.
+- A node with key 6 is deleted.
+- A node is inserted with key 12 value also 12.
+- The tree is printed out at every operation.
+
+Run the following command to test the code:
+
+`python3 prolly_tree.py`
+
+Output of the test run:
+
+```
+Creating 9 messages:
+Creating a prolly tree with the messages
+Printing the tree
+0 <=> 1 <=> 2 <=> 3 <=> 4 <=> 5 <=> 6 <=> 7 <=> 8 <=> 9 <=> Tail
+3 <=> 4 <=> 6 <=> 7 <=> 9 <=> Tail
+4 <=> 6 <=> 9 <=> Tail
+4 <=> 9 <=> Tail
+4 <=> 9 <=> Tail
+4 <=> 9 <=> Tail
+9 <=> Tail
+Tail
+#############################################
+Searching a node with timestamp 5
+Key Found inside the tree Node(5, 5)
+#############################################
+Deleting a node with timestamp 6
+Printing the tree
+#############################################
+inserting a node with timestamp 12
+Printing the tree
+0 <=> 1 <=> 2 <=> 3 <=> 4 <=> 5 <=> 7 <=> 8 <=> 9 <=> 12 <=> Tail
+3 <=> 4 <=> 7 <=> 9 <=> 12 <=> Tail
+4 <=> 9 <=> Tail
+4 <=> 9 <=> Tail
+4 <=> 9 <=> Tail
+4 <=> 9 <=> Tail
+9 <=> Tail
+Tail
+```
