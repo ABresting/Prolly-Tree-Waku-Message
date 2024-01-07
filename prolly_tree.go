@@ -65,7 +65,7 @@ func BucketHash(nodes []*Node) string {
 
 // Node represents each node in the tree structure.
 type Node struct {
-	timestamp   string
+	timestamp   int
 	data        string
 	nodeHash    string
 	level       int
@@ -79,7 +79,7 @@ type Node struct {
 }
 
 // NewNode creates and initializes a new Node.
-func NewNode(data string, timestamp string, isTail bool) *Node {
+func NewNode(data string, timestamp int, isTail bool) *Node {
 	n := &Node{
 		timestamp:  timestamp,
 		data:       data,
@@ -89,8 +89,8 @@ func NewNode(data string, timestamp string, isTail bool) *Node {
 		down:       nil,
 		left:       nil,
 		right:      nil,
-		merkelHash: CalculateHash(data + timestamp),
-		nodeHash:   CalculateHash(data + timestamp),
+		merkelHash: CalculateHash(data + strconv.Itoa(timestamp)),
+		nodeHash:   CalculateHash(data + strconv.Itoa(timestamp)),
 		boundary:   nil,
 	}
 	return n
@@ -156,9 +156,6 @@ func (n *Node) FindNextBoundaryNode() *Node {
 	return node
 }
 
-
-
-
 // Level represents a level in the ProllyTree.
 type Level struct {
 	level int
@@ -183,7 +180,7 @@ func (l *Level) ToList() []*Node {
 
 // String provides a string representation of the level.
 func (l *Level) String() string {
-	var timestamps []string
+	var timestamps []int
 	for _, node := range l.ToList() {
 		timestamps = append(timestamps, node.timestamp)
 	}
@@ -197,7 +194,7 @@ func BaseLevel(messages []*Message) *Level {
 	for _, m := range messages {
 		nodes = append(nodes, NewNode(m.data, m.timestamp, false))
 	}
-	fakeTail := NewNode("Tail", "Tail", true)
+	fakeTail := NewNode("Tail", -1, true)
 	nodes = append(nodes, fakeTail)
 	level.tail = LinkNodes(nodes)[len(nodes)-1]
 	return level
@@ -255,7 +252,7 @@ func (pt *ProllyTree) Insert(message *Message) {
 }
 
 // Delete removes a node from the ProllyTree based on the timestamp.
-func (pt *ProllyTree) Delete(timestamp string) *Node {
+func (pt *ProllyTree) Delete(timestamp int) *Node {
 	originalNode := pt.Search(timestamp)
 	node := originalNode
 	if originalNode == nil {
@@ -294,7 +291,7 @@ func (pt *ProllyTree) Delete(timestamp string) *Node {
 }
 
 // Search finds a node based on the timestamp.
-func (pt *ProllyTree) Search(timestamp string) *Node {
+func (pt *ProllyTree) Search(timestamp int) *Node {
 	rightNode := pt.findNodeGreaterThan(timestamp)
 	if rightNode.left != nil && rightNode.left.timestamp == timestamp {
 		return rightNode.left
@@ -312,13 +309,13 @@ func (pt *ProllyTree) String() string {
 }
 
 // findNodeGreaterThan finds the node with the smallest timestamp that is greater than the given timestamp.
-func (pt *ProllyTree) findNodeGreaterThan(timestamp string) *Node {
+func (pt *ProllyTree) findNodeGreaterThan(timestamp int) *Node {
 	nodeToFind := NewNode("", timestamp, false)
 	node := pt.levels[len(pt.levels)-1].tail // Start from the root
 
 	// Move down to the level 0 right boundary node of the given timestamp
 	for node.down != nil {
-		if node.left != nil && node.left.GreaterThan(nodeToFind) {
+		if node.left != nil && node.left.timestamp >nodeToFind.timestamp {
 			node = node.left
 		} else {
 			node = node.down
@@ -326,7 +323,7 @@ func (pt *ProllyTree) findNodeGreaterThan(timestamp string) *Node {
 	}
 
 	// Move left until the left element is the timestamp or lower than the timestamp
-	for node.left != nil && node.left.GreaterThan(nodeToFind) {
+	for node.left != nil && node.left.timestamp >nodeToFind.timestamp {
 		node = node.left
 	}
 
@@ -389,11 +386,11 @@ func (pt *ProllyTree) addEmptyLevel() {
 // Message represents the data structure to be added to the tree.
 type Message struct {
 	data      string
-	timestamp string
+	timestamp int
 }
 
 // NewMessage creates and initializes a new Message.
-func NewMessage(data, timestamp string) *Message {
+func NewMessage(data string, timestamp int) *Message {
 	return &Message{data: data, timestamp: timestamp}
 }
 
@@ -407,7 +404,7 @@ func main() {
     fmt.Println("Creating 9 messages: ")
 	var messages []*Message
 	for i := 0; i < 10; i++ {
-		messages = append(messages, NewMessage(strconv.Itoa(i), strconv.Itoa(i)))
+		messages = append(messages, NewMessage(strconv.Itoa(i), i))
 	}
 
 	fmt.Println("Creating a prolly tree with the messages")
@@ -418,7 +415,7 @@ func main() {
 
 	fmt.Println("#############################################")
 	fmt.Println("Searching a node with timestamp 5")
-	foundNode := tree.Search("5")
+	foundNode := tree.Search(5)
 	if foundNode != nil {
 		fmt.Println("Key Found inside the tree: Node(", foundNode.data, ",", foundNode.timestamp, ")")
 	} else {
@@ -427,13 +424,13 @@ func main() {
 
 	fmt.Println("#############################################")
 	fmt.Println("Deleting a node with timestamp 6")
-	tree.Delete("6")
+	tree.Delete(6)
 	fmt.Println("Printing the tree")
 	fmt.Println(tree)
 
 	fmt.Println("#############################################")
 	fmt.Println("Inserting a node with timestamp 12")
-	tree.Insert(NewMessage("12", "12"))
+	tree.Insert(NewMessage("12", 12))
 	fmt.Println("Printing the tree")
 	fmt.Println(tree)
 }
