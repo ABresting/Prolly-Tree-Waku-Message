@@ -1,4 +1,5 @@
 import hashlib
+import ipdb 
 
 def calculate_hash(hashable_str):
     hasher = hashlib.sha256()
@@ -321,3 +322,201 @@ print("inserting a node with timestamp 12")
 tree.insert(Message(12, 12))
 print("Printing the tree")
 print(tree)
+    
+print("#########################################################")
+
+print("Diff protocol in action")
+def get_non_boundary_nodes(list_of_nodes):
+    """
+    get all the nodes that are not boundary nodes starting from the first node itself
+    """
+    non_boundary_nodes = []
+    for node in list_of_nodes:
+        if node.down is None:
+            continue
+        counter_node = node.down
+        non_boundary_nodes.append(counter_node)
+        counter_node= counter_node.left
+
+        while counter_node is not None:
+            if counter_node.boundary:
+                break
+            non_boundary_nodes.insert(0,counter_node)
+            counter_node = counter_node.left
+    return non_boundary_nodes
+
+def get_non_boundary_nodes_for_level_0(list_of_nodes):
+    """
+    get all the nodes that are not boundary nodes starting from the first node itself
+    """
+    non_boundary_nodes = []
+    for node in list_of_nodes:
+        while node.down is not None:
+            node = node.down
+        counter_node = node
+        non_boundary_nodes.append(counter_node)
+        counter_node= counter_node.left
+
+        while counter_node is not None:
+            if counter_node.boundary:
+                break
+            non_boundary_nodes.insert(0,counter_node)
+            counter_node = counter_node.left
+    return non_boundary_nodes
+
+def find_diff_between_2_prolly_trees(root1,root2):
+    """
+    we need to find what all keys are there in root2 that are not in root1
+    """
+ 
+    missing_keys =[]
+
+    node_list1 = [root1]
+    node_list2 = [root2]
+
+    # function to check diff at each level
+    def check_diff_at_each_level(node_list1,node_list2, level):
+        if level < 0:
+            return
+        
+        next_level_keys_to_fetch_node1 = []
+        next_level_keys_to_fetch_node2 = []
+        level_ptr1, level_ptr2 = node_list1[-1], node_list2[-1]
+        while level_ptr1 and level_ptr2 :
+            # if timestamps match then only check for merkel hash and if they do not match then add them to missing keys
+            if level_ptr1.timestamp == level_ptr2.timestamp:
+                # mismatch in merkel hash so add it to missing keys
+                if level_ptr1.merkel_hash != level_ptr2.merkel_hash:
+                    # insert at first position always
+                    next_level_keys_to_fetch_node1.insert(0,level_ptr1)
+                    next_level_keys_to_fetch_node2.insert(0,level_ptr2)
+                # advance the pointers
+                level_ptr1 = level_ptr1.left
+                level_ptr2 = level_ptr2.left
+            # tree 1 has no such key so add it to missing keys
+            elif level_ptr1.timestamp < level_ptr2.timestamp:
+                # do not let non level 0 nodes to be part of the misisng keys
+                if level_ptr2.level ==0:
+                    missing_keys.append(level_ptr2)
+                next_level_keys_to_fetch_node2.insert(0,level_ptr2)
+                # move the pointer of tree2 may be the next key is present in tree1
+                level_ptr2 = level_ptr2.left
+            # tree1 has extra keys than tree2, skip the tree1 key and see if next one matches
+            else:
+                level_ptr1 = level_ptr1.left
+
+        # get the corresponding keys where the merkel hash did not match
+        node_list1 = get_non_boundary_nodes(next_level_keys_to_fetch_node1)
+        node_list2 = get_non_boundary_nodes(next_level_keys_to_fetch_node2)
+        # meaning that all nodes match the hashes at this level so no further check required
+        if len(node_list1) == 0 and len(node_list2) ==0:
+            return missing_keys
+        elif len(node_list1) == 0:
+            res = get_non_boundary_nodes_for_level_0(node_list2)
+            [missing_keys.append(node) for node in res]
+            return missing_keys
+
+        check_diff_at_each_level(node_list1, node_list2, level-1)
+
+    check_diff_at_each_level(node_list1, node_list2, root1.level)
+    return missing_keys
+
+#######################
+# Use case 1 where the tree1 is a subset of tree2
+print("#############################################")
+print("Use case 1 where the tree1 is a subset of tree2")
+messages = [Message((i), i) for i in range(0, 11)]
+tree1 = ProllyTree(messages)
+print(tree1)
+
+messages = [Message((i), i) for i in range(0, 15)]
+tree2 = ProllyTree(messages)
+print(tree2)
+
+# Check if the height of the tree is equal
+height_of_tree1 = len(tree1)
+height_of_tree2 = len(tree2)
+print("level of tree1 is ", tree1[-1].tail.level)
+print("level of tree2 is ", tree2[-1].tail.level)
+root_of_tree1 = tree1[-1].tail
+root_of_tree2 = tree2[-1].tail
+print("level of tree1 before is ", root_of_tree1.level)
+if height_of_tree1 > height_of_tree2:
+    height_diff = height_of_tree1 - height_of_tree2
+    while height_diff > 0:
+        root_of_tree1 = root_of_tree1.down
+        height_diff -= 1
+    print ("root of tree1 now is ", root_of_tree1.level)
+elif height_of_tree2 > height_of_tree1:
+    height_diff = height_of_tree2 - height_of_tree1
+    while height_diff > 0:
+        root_of_tree2 = root_of_tree2.down
+        height_diff -= 1
+    print ("root of tree2 now is ", root_of_tree2.level)
+print("Diff of the Tree1 and Tree2 is ", find_diff_between_2_prolly_trees(root_of_tree1, root_of_tree2))
+
+# Use case 2 where the tree1 is a superset of tree2
+print("#############################################")
+print("Use case 2 where the tree1 is a superset of tree2")
+messages = [Message((i), i) for i in range(0, 11)]
+tree1 = ProllyTree(messages)
+print(tree1)
+
+messages = [Message((i), i) for i in range(0, 10)]
+tree2 = ProllyTree(messages)
+print(tree2)
+
+# Check if the height of the tree is equal
+height_of_tree1 = len(tree1)
+height_of_tree2 = len(tree2)
+print("level of tree1 is ", tree1[-1].tail.level)
+print("level of tree2 is ", tree2[-1].tail.level)
+root_of_tree1 = tree1[-1].tail
+root_of_tree2 = tree2[-1].tail
+print("level of tree1 before is ", root_of_tree1.level)
+if height_of_tree1 > height_of_tree2:
+    height_diff = height_of_tree1 - height_of_tree2
+    while height_diff > 0:
+        root_of_tree1 = root_of_tree1.down
+        height_diff -= 1
+    print ("root of tree1 now is ", root_of_tree1.level)
+elif height_of_tree2 > height_of_tree1:
+    height_diff = height_of_tree2 - height_of_tree1
+    while height_diff > 0:
+        root_of_tree2 = root_of_tree2.down
+        height_diff -= 1
+    print ("root of tree2 now is ", root_of_tree2.level)
+print("Diff of the Tree1 and Tree2 is ", find_diff_between_2_prolly_trees(root_of_tree1, root_of_tree2))
+
+# Usecase 3 partially filled tree tree1 which is subset of tree2
+print("#############################################")
+print("Usecase 3 partially filled tree tree1 which is subset of tree2")
+messages = [Message((i), i) for i in range(0, 8) if i != 5]
+tree1 = ProllyTree(messages)
+print(tree1)
+
+messages = [Message((i), i) for i in range(0, 18)]
+tree2 = ProllyTree(messages)
+print(tree2)
+
+# Check if the height of the tree is equal
+height_of_tree1 = len(tree1)
+height_of_tree2 = len(tree2)
+print("level of tree1 is ", tree1[-1].tail.level)
+print("level of tree2 is ", tree2[-1].tail.level)
+root_of_tree1 = tree1[-1].tail
+root_of_tree2 = tree2[-1].tail
+print("level of tree1 before is ", root_of_tree1.level)
+if height_of_tree1 > height_of_tree2:
+    height_diff = height_of_tree1 - height_of_tree2
+    while height_diff > 0:
+        root_of_tree1 = root_of_tree1.down
+        height_diff -= 1
+    print ("root of tree1 now is ", root_of_tree1.level)
+elif height_of_tree2 > height_of_tree1:
+    height_diff = height_of_tree2 - height_of_tree1
+    while height_diff > 0:
+        root_of_tree2 = root_of_tree2.down
+        height_diff -= 1
+    print ("root of tree2 now is ", root_of_tree2.level)
+print("Diff of the Tree1 and Tree2 is ", find_diff_between_2_prolly_trees(root_of_tree1, root_of_tree2))
