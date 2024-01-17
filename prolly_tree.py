@@ -1,4 +1,4 @@
-import hashlib
+import hashlib, time
 import ipdb 
 
 def calculate_hash(hashable_str):
@@ -250,6 +250,28 @@ class ProllyTree:
             return right_node.left
         else:
             return None
+    
+    # function to get an intermediate node using a key and a level
+    def get_intermediate_node(self, timestamp, level):
+        """
+        get the node at a particular level using a key without using find_node_greater_than method
+        """
+        # get the root of the tree
+        root = self.get_root()
+        # initialize the node to be returned to be the root
+        node = root
+        # write a traversal method that not just goes down straight but also when comes down the level goes left first till the appropriate node is found to go down
+
+        # get to the level of the node
+        while node.level > level:
+            # go the node which is just bigger than the key/timestamp
+            if node.left and node.left.timestamp > timestamp:
+                node = node.left
+            node = node.down
+        # get to the node at the level and with the key
+        while node.timestamp != timestamp:
+            node = node.left
+        return node
 
     def __repr__(self):
         return "\n".join([str(l) for l in self.levels])
@@ -292,6 +314,24 @@ class ProllyTree:
         upgraded_tail = self[level_index - 1].tail.create_higher_level_node()
         new_level.tail = upgraded_tail
         return self
+    
+    def get_root(self):
+        """
+        get the root of the tree
+        """
+        return self[-1].tail
+    
+    def get_root_at_height(self, height_diff):
+        """
+        get the root of the tree at a particular height
+        """
+        # initialize the root at height to be the root of the tree
+        root_at_height = self.get_root()
+        # get to the root at height but stepping down height_diff times
+        while height_diff > 0:
+            root_at_height = root_at_height.down
+            height_diff -= 1
+        return root_at_height
 
 # This is a simple wrapper used to test Prolly tree
 class Message:
@@ -302,30 +342,8 @@ class Message:
     def __repr__(self):
         return f"Message({self.data}, {self.timestamp})"
 
-# to Test the prolly tree
-print("Creating 9 messages: ")
-messages = [Message(i, i) for i in range(0, 10)]
-print("Creating a prolly tree with the messages")
-tree = ProllyTree(messages)
-print("Printing the tree")
-print(tree)
-print("#############################################")
-print("Searching a node with timestamp 5")
-print("Key Found inside the tree " + str(tree.search(5)))
-print("#############################################")
-print("Deleting a node with timestamp 6")
-tree.delete(6)
-print("Printing the tree")
-print(tree)
-print("#############################################")
-print("inserting a node with timestamp 12")
-tree.insert(Message(12, 12))
-print("Printing the tree")
-print(tree)
-    
-print("#########################################################")
-
-print("Diff protocol in action")
+# Diff protocol in action
+# get the nodes that are not boundary nodes starting from a particular boundary node at level just below it
 def get_non_boundary_nodes(list_of_nodes):
     """
     get all the nodes that are not boundary nodes starting from the first node itself
@@ -345,6 +363,7 @@ def get_non_boundary_nodes(list_of_nodes):
             counter_node = counter_node.left
     return non_boundary_nodes
 
+# get the nodes that are not boundary nodes at level 0
 def get_non_boundary_nodes_for_level_0(list_of_nodes):
     """
     get all the nodes that are not boundary nodes starting from the first node itself
@@ -364,6 +383,7 @@ def get_non_boundary_nodes_for_level_0(list_of_nodes):
             counter_node = counter_node.left
     return non_boundary_nodes
 
+# this function is called from the node that wants to Sync with peer node
 def find_diff_between_2_prolly_trees(root1,root2):
     """
     we need to find what all keys are there in root2 that are not in root1
@@ -378,10 +398,11 @@ def find_diff_between_2_prolly_trees(root1,root2):
     def check_diff_at_each_level(node_list1,node_list2, level):
         if level < 0:
             return
-        
+
         next_level_keys_to_fetch_node1 = []
         next_level_keys_to_fetch_node2 = []
         level_ptr1, level_ptr2 = node_list1[-1], node_list2[-1]
+        # check if at a particular level the keys/merkel_hash are same or not
         while level_ptr1 and level_ptr2 :
             # if timestamps match then only check for merkel hash and if they do not match then add them to missing keys
             if level_ptr1.timestamp == level_ptr2.timestamp:
@@ -405,9 +426,11 @@ def find_diff_between_2_prolly_trees(root1,root2):
             else:
                 level_ptr1 = level_ptr1.left
 
-        # get the corresponding keys where the merkel hash did not match
+        # get the corresponding keys where the merkel hash did not match from local Prolly tree
         node_list1 = get_non_boundary_nodes(next_level_keys_to_fetch_node1)
+        # remote node is being called to send the keys/nodes where merkel_hash doesn't match
         node_list2 = get_non_boundary_nodes(next_level_keys_to_fetch_node2)
+
         # meaning that all nodes match the hashes at this level so no further check required
         if len(node_list1) == 0 and len(node_list2) ==0:
             return missing_keys
@@ -420,103 +443,3 @@ def find_diff_between_2_prolly_trees(root1,root2):
 
     check_diff_at_each_level(node_list1, node_list2, root1.level)
     return missing_keys
-
-#######################
-# Use case 1 where the tree1 is a subset of tree2
-print("#############################################")
-print("Use case 1 where the tree1 is a subset of tree2")
-messages = [Message((i), i) for i in range(0, 11)]
-tree1 = ProllyTree(messages)
-print(tree1)
-
-messages = [Message((i), i) for i in range(0, 15)]
-tree2 = ProllyTree(messages)
-print(tree2)
-
-# Check if the height of the tree is equal
-height_of_tree1 = len(tree1)
-height_of_tree2 = len(tree2)
-print("level of tree1 is ", tree1[-1].tail.level)
-print("level of tree2 is ", tree2[-1].tail.level)
-root_of_tree1 = tree1[-1].tail
-root_of_tree2 = tree2[-1].tail
-print("level of tree1 before is ", root_of_tree1.level)
-if height_of_tree1 > height_of_tree2:
-    height_diff = height_of_tree1 - height_of_tree2
-    while height_diff > 0:
-        root_of_tree1 = root_of_tree1.down
-        height_diff -= 1
-    print ("root of tree1 now is ", root_of_tree1.level)
-elif height_of_tree2 > height_of_tree1:
-    height_diff = height_of_tree2 - height_of_tree1
-    while height_diff > 0:
-        root_of_tree2 = root_of_tree2.down
-        height_diff -= 1
-    print ("root of tree2 now is ", root_of_tree2.level)
-print("Diff of the Tree1 and Tree2 is ", find_diff_between_2_prolly_trees(root_of_tree1, root_of_tree2))
-
-# Use case 2 where the tree1 is a superset of tree2
-print("#############################################")
-print("Use case 2 where the tree1 is a superset of tree2")
-messages = [Message((i), i) for i in range(0, 11)]
-tree1 = ProllyTree(messages)
-print(tree1)
-
-messages = [Message((i), i) for i in range(0, 10)]
-tree2 = ProllyTree(messages)
-print(tree2)
-
-# Check if the height of the tree is equal
-height_of_tree1 = len(tree1)
-height_of_tree2 = len(tree2)
-print("level of tree1 is ", tree1[-1].tail.level)
-print("level of tree2 is ", tree2[-1].tail.level)
-root_of_tree1 = tree1[-1].tail
-root_of_tree2 = tree2[-1].tail
-print("level of tree1 before is ", root_of_tree1.level)
-if height_of_tree1 > height_of_tree2:
-    height_diff = height_of_tree1 - height_of_tree2
-    while height_diff > 0:
-        root_of_tree1 = root_of_tree1.down
-        height_diff -= 1
-    print ("root of tree1 now is ", root_of_tree1.level)
-elif height_of_tree2 > height_of_tree1:
-    height_diff = height_of_tree2 - height_of_tree1
-    while height_diff > 0:
-        root_of_tree2 = root_of_tree2.down
-        height_diff -= 1
-    print ("root of tree2 now is ", root_of_tree2.level)
-print("Diff of the Tree1 and Tree2 is ", find_diff_between_2_prolly_trees(root_of_tree1, root_of_tree2))
-
-# Usecase 3 partially filled tree tree1 which is subset of tree2
-print("#############################################")
-print("Usecase 3 partially filled tree tree1 which is subset of tree2")
-messages = [Message((i), i) for i in range(0, 8) if i != 5]
-tree1 = ProllyTree(messages)
-print(tree1)
-
-messages = [Message((i), i) for i in range(0, 18)]
-tree2 = ProllyTree(messages)
-print(tree2)
-
-# Check if the height of the tree is equal
-height_of_tree1 = len(tree1)
-height_of_tree2 = len(tree2)
-print("level of tree1 is ", tree1[-1].tail.level)
-print("level of tree2 is ", tree2[-1].tail.level)
-root_of_tree1 = tree1[-1].tail
-root_of_tree2 = tree2[-1].tail
-print("level of tree1 before is ", root_of_tree1.level)
-if height_of_tree1 > height_of_tree2:
-    height_diff = height_of_tree1 - height_of_tree2
-    while height_diff > 0:
-        root_of_tree1 = root_of_tree1.down
-        height_diff -= 1
-    print ("root of tree1 now is ", root_of_tree1.level)
-elif height_of_tree2 > height_of_tree1:
-    height_diff = height_of_tree2 - height_of_tree1
-    while height_diff > 0:
-        root_of_tree2 = root_of_tree2.down
-        height_diff -= 1
-    print ("root of tree2 now is ", root_of_tree2.level)
-print("Diff of the Tree1 and Tree2 is ", find_diff_between_2_prolly_trees(root_of_tree1, root_of_tree2))
